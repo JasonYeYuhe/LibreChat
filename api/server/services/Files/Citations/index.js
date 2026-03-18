@@ -146,6 +146,8 @@ async function enhanceSourcesWithMetadata(sources, appConfig) {
       metadata: {
         ...source.metadata,
         storageType: configuredStorageType,
+        fileType: fileRecord.type || undefined,
+        fileBytes: fileRecord.bytes || undefined,
       },
     };
   });
