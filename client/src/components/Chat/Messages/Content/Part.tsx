@@ -161,7 +161,7 @@ const Part = memo(
           );
         }
         if (name.startsWith(Constants.LC_TRANSFER_TO_)) {
-          return <AgentHandoff args={tc.args ?? ''} name={name} output={tc.output ?? ''} />;
+          return <AgentHandoff args={tc.args ?? ''} name={name} />;
         }
         return (
           <ToolCall
@@ -172,7 +172,6 @@ const Part = memo(
             isSubmitting={isSubmitting}
             attachments={attachments}
             auth={tc.auth}
-            expires_at={tc.expires_at}
             isLast={isLast}
           />
         );
