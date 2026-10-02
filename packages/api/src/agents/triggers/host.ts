@@ -1,6 +1,6 @@
 import { logger, tenantStorage } from '@librechat/data-schemas';
 import { Constants, EModelEndpoint } from 'librechat-data-provider';
-import type { TFile } from 'librechat-data-provider';
+import type { CodeApprovalMode, TFile } from 'librechat-data-provider';
 import type {
   AgentContinueTriggerEnvelope,
   AgentFireTriggerEnvelope,
@@ -43,6 +43,8 @@ export interface AgentContinuationAdmissionSource {
   sourceId: string;
   claimId: string;
   claimBy: string;
+  effectivePredecessorCreatedAt?: number;
+  lineagePredecessorId?: string;
 }
 
 export type AgentTriggerContinuePreparation =
@@ -56,6 +58,9 @@ export type AgentTriggerContinuePreparation =
       files?: Partial<TFile>[];
       quotes?: string[];
       manualSkills?: string[];
+      /** Parent-selected coding preference for a completion turn. Admission
+       * revalidates it against live policy; event payloads cannot supply it. */
+      codeApprovalMode?: CodeApprovalMode;
       /** Trusted source identity committed by execution enrollment before the
        * provider-start fence opens. */
       admissionSource?: AgentContinuationAdmissionSource;
@@ -665,6 +670,9 @@ async function startRun(
           }),
           ...(readyPreparation?.quotes != null && {
             quotes: readyPreparation.quotes,
+          }),
+          ...(readyPreparation?.codeApprovalMode != null && {
+            codeApprovalMode: readyPreparation.codeApprovalMode,
           }),
           ...(readyPreparation?.manualSkills != null && {
             manualSkills: readyPreparation.manualSkills,

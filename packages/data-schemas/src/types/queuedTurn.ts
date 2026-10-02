@@ -1,3 +1,4 @@
+import type { CodeApprovalMode } from 'librechat-data-provider';
 import type { Document, Types } from 'mongoose';
 
 export type AgentQueuedTurnStatus =
@@ -20,6 +21,7 @@ export interface AgentQueuedTurnFileRef {
   type?: string;
   filepath?: string;
   filename?: string;
+  llmDeliveryPath?: 'provider' | 'text' | 'none';
   height?: number;
   width?: number;
   bytes?: number;
@@ -37,6 +39,12 @@ export interface AgentQueuedTurnTerminalReceipt {
   admissionMode?: 'warm' | 'ordinary';
   generationId?: string;
   generationCreatedAt?: number;
+  /** Effective predecessor consumed by this admission after queued-turn chaining. */
+  effectivePredecessorCreatedAt?: number;
+  /** Durable lineage node: the root-message identity or predecessor queued-turn identity. */
+  lineagePredecessorId?: string;
+  /** This admission consumed no predecessor generation boundary. */
+  rootPredecessor?: true;
   failure?: AgentQueuedTurnFailure;
 }
 
@@ -57,12 +65,16 @@ export interface IAgentQueuedTurn {
   reservationWriterId?: string;
   /** Bounded active-lane capacity token. Present only while queued/claimed. */
   activeSlot?: number;
+  /** Unique durable admission-order reservation for one conversation lane. */
+  admissionSlot?: boolean;
   status: AgentQueuedTurnStatus;
   priority: boolean;
   text: string;
   files?: AgentQueuedTurnFileRef[];
   quotes?: string[];
   manualSkills?: string[];
+  /** Per-turn selection, absent on legacy queue rows. Not a permission grant. */
+  codeApprovalMode?: CodeApprovalMode;
   expectedPredecessorCreatedAt?: number;
   attempts: number;
   availableAt: Date;
@@ -75,6 +87,10 @@ export interface IAgentQueuedTurn {
   /** Durable proof that ordinary admission may have crossed the HTTP boundary. */
   admissionStartedAt?: Date;
   admissionId?: string;
+  /** Effective predecessor durably fenced before provider admission begins. */
+  admissionEffectivePredecessorCreatedAt?: number;
+  /** Durable lineage node fenced with the effective predecessor. */
+  admissionLineagePredecessorId?: string;
   /** Version 2 requires accepted and deduplicated execution responses to prove
    * the exact post-invocation source receipt. */
   admissionProtocolVersion?: 2;
@@ -135,6 +151,7 @@ export type AgentQueuedTurnActiveRecord = Pick<
   | 'files'
   | 'quotes'
   | 'manualSkills'
+  | 'codeApprovalMode'
   | 'expectedPredecessorCreatedAt'
   | 'attempts'
   | 'availableAt'
@@ -148,6 +165,7 @@ export type AgentQueuedTurnActiveRecord = Pick<
 
 export interface AgentQueuedTurnClaim extends AgentQueuedTurnRecord {
   status: 'claimed';
+  admissionSlot: true;
   claimId: string;
   claimBy: string;
   claimUntil: Date;

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CODE_APPROVAL_MODES } from '../code/approval';
 
 export const agentQueuedTurnStatuses = [
   'queued',
@@ -18,6 +19,7 @@ export const agentQueuedTurnFileRefSchema = z.object({
   height: z.number().optional(),
   width: z.number().optional(),
   bytes: z.number().nonnegative().optional(),
+  llmDeliveryPath: z.enum(['provider', 'text', 'none']).optional(),
 });
 export type TAgentQueuedTurnFileRef = z.infer<typeof agentQueuedTurnFileRefSchema>;
 
@@ -29,6 +31,8 @@ export const enqueueAgentQueuedTurnSchema = z.object({
   files: z.array(agentQueuedTurnFileRefSchema).optional(),
   quotes: z.array(z.string()).optional(),
   manualSkills: z.array(z.string().trim().min(1)).optional(),
+  /** Selected when queued, revalidated against live policy at turn admission. */
+  codeApprovalMode: z.enum(CODE_APPROVAL_MODES).optional(),
   priority: z.boolean().optional(),
   expectedPredecessorCreatedAt: z.number().int().nonnegative().optional(),
 });
@@ -52,7 +56,13 @@ export type TCancelAgentQueuedTurnRequest = z.infer<typeof cancelAgentQueuedTurn
 export const agentQueuedTurnReceiptSchema = enqueueAgentQueuedTurnSchema.extend({
   queuedTurnId: z.string().trim().min(1),
   status: z.enum(agentQueuedTurnStatuses),
+  /** Effective generation boundary consumed by an admitted turn. This can
+   * advance beyond the originally captured root as queued turns chain. */
+  effectivePredecessorCreatedAt: z.number().int().nonnegative().optional(),
+  /** Explicitly proves that this admission consumed no predecessor boundary. */
+  rootPredecessor: z.literal(true).optional(),
   position: z.number().int().nonnegative().optional(),
+  /** Immutable queue sequence retained as `revision` for wire compatibility. */
   revision: z.number().int().nonnegative(),
   failure: z
     .object({
@@ -70,6 +80,8 @@ export const agentQueuedTurnCapabilitySchema = z.discriminatedUnion('supported',
   z.object({
     supported: z.literal(true),
     durability: z.enum(agentQueuedTurnDurability),
+    /** v2 preserves approval snapshots through admission and execution. */
+    protocolVersion: z.literal(2).optional(),
   }),
 ]);
 export type TAgentQueuedTurnCapability = z.infer<typeof agentQueuedTurnCapabilitySchema>;
